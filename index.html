@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日简报 - 2026年07月06日</title>
+    <style>
+        /* 7.3寸墨水屏优化 - 800x480 (5:3) */
+        @font-face {
+            font-family: 'Noto Sans CJK SC';
+            src: local('Noto Sans CJK SC'), local('Microsoft YaHei'), local('SimHei'), local('WenQuanYi Micro Hei');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 800px;
+            height: 480px;
+            font-family: 'Noto Sans CJK SC', 'Microsoft YaHei', 'SimHei', 'WenQuanYi Micro Hei', sans-serif;
+            background: #fff;
+            color: #000;
+            padding: 20px 28px;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+        }
+
+        .header-left .date {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .header-left .weekday {
+            font-size: 16px;
+            opacity: 0.7;
+        }
+
+        .header-right .time {
+            font-size: 32px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            padding: 6px 0;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 8px;
+            letter-spacing: 4px;
+        }
+
+        .hot-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hot-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            font-size: 15px;
+            line-height: 1.4;
+            border-bottom: 1px dashed #ddd;
+        }
+
+        .hot-item:last-child {
+            border-bottom: none;
+        }
+
+        .hot-item .rank {
+            width: 28px;
+            font-weight: bold;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .hot-item .rank.top3 {
+            color: #000;
+            font-weight: 900;
+        }
+
+        .hot-item .title {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hot-item .hot {
+            width: 60px;
+            text-align: right;
+            font-size: 12px;
+            opacity: 0.6;
+            flex-shrink: 0;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 12px;
+            right: 28px;
+            font-size: 11px;
+            opacity: 0.5;
+        }
+
+        /* 墨水屏优化：无动画、无阴影、纯黑白 */
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <span class="date">2026年07月06日</span>
+            <span class="weekday">星期一</span>
+        </div>
+        <div class="header-right">
+            <span class="time">02:37</span>
+        </div>
+    </div>
+
+    <div class="section-title">微 博 热 搜</div>
+
+    <div class="hot-list">
+        
+        <div class="hot-item">
+            <span class="rank">1</span>
+            <span class="title">19块的外卖用玻璃罐装</span>
+            <span class="hot">71万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">2</span>
+            <span class="title">绵竹半小时三震</span>
+            <span class="hot">32万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">3</span>
+            <span class="title">数说中国经济6月成绩单</span>
+            <span class="hot">28万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">4</span>
+            <span class="title">有线耳机此生从此分明了</span>
+            <span class="hot">27万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">5</span>
+            <span class="title">张新成演唱会翻唱率</span>
+            <span class="hot">23万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">6</span>
+            <span class="title">佛得角队在机场被疯狂包围</span>
+            <span class="hot">23万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">7</span>
+            <span class="title">虞书欣陈靖可灿如繁星热度破7400</span>
+            <span class="hot">17万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">8</span>
+            <span class="title">短发哈兰德将对阵巴西</span>
+            <span class="hot">17万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">9</span>
+            <span class="title">藏马熊进酒店跟开罐头似的</span>
+            <span class="hot">17万</span>
+        </div>
+        <div class="hot-item">
+            <span class="rank">10</span>
+            <span class="title">野狗骨头收视率</span>
+            <span class="hot">17万</span>
+        </div>
+    </div>
+
+    <div class="footer">更新于 2026-07-06 02:36 | 墨水屏简报</div>
+</body>
+</html>
