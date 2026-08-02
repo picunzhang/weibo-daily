@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>七色墨水屏控制台 · 7.3" E-Paper Studio</title>
+    <link rel="shortcut icon" type="image/png" href="favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css?v=20260629">
+</head>
+<body>
+<div class="main">
+    <h3>
+        <span>七色墨水屏控制台</span>
+    </h3>
+    <p class="subtitle">7.3&quot; E-Paper Studio</p>
+    <fieldset>
+        <legend>&nbsp;</legend>
+        <div class="flex-container">
+            <div class="flex-group">
+                <button id="connectbutton" type="button" class="primary" onclick="preConnect()">连接</button>
+                <button id="reconnectbutton" type="button" class="secondary" onclick="reConnect()">重连</button>
+                <button type="button" class="secondary" onclick="clearLog()">清空日志</button>
+            </div>
+            <div class="flex-group">
+                <label for="blenamefilter">设备ID:</label>
+                <input id="blenamefilter" type="text" value="" placeholder="输入4位16进制" maxlength="4">
+                <button id="filterconnectbutton" type="button" class="primary" onclick="filterConnect()">搜索</button>
+            </div>
+        </div>
+        <div class="log-container" id="log"></div>
+    </fieldset>
+
+    <fieldset id="appModeFieldset">
+        <legend>设备模式</legend>
+        <div class="flex-container">
+            <div class="flex-group">
+                <label>当前协议:</label>
+                <span id="protocolStatus">未连接</span>
+            </div>
+            <div class="flex-group" id="abSelectGroup">
+                <label for="abSelect">A/B面选择</label>
+                <select id="abSelect">
+                    <option value="1">A面</option>
+                    <option value="2">B面</option>
+                    <option value="3">AB同显</option>
+                    <option value="7">AB异显</option>
+                </select>
+            </div>
+            <div class="flex-group" id="compressOptionGroup">
+                <label for="compressEnable">启用LZ77压缩</label>
+                <input type="checkbox" id="compressEnable" checked>
+            </div>
+        </div>
+        <div id="doubleImagePanel">
+            <div class="flex-container" style="margin-top: 10px;">
+                <div class="flex-group">
+                    <button id="syncToABtn" type="button" class="secondary">📋 从主画布同步到 A 面</button>
+                    <button id="syncToBBtn" type="button" class="secondary">📋 从主画布同步到 B 面</button>
+                    <span style="margin-left: 12px;">A面状态: <span id="aStatusLabel">未设置</span></span>
+                    <span style="margin-left: 8px;">B面状态: <span id="bStatusLabel">未设置</span></span>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>蓝牙传图</legend>
+        <div class="flex-container options">
+            <div class="flex-group">
+                <label>画布尺寸:</label>
+                <span>7.3E6 (800x480)</span>
+            </div>
+            <div class="flex-group">
+            </div>
+        </div>
+        <div class="flex-container options">
+            <div class="flex-group">
+                <label for="mtusize">MTU:</label>
+                <input type="number" id="mtusize" value="20" min="0" max="255">
+                <label for="interleavedcount">确认间隔:</label>
+                <input type="number" id="interleavedcount" value="50" min="0" max="500">
+            </div>
+        </div>
+        <div class="status-bar"><b>状态：</b><span id="status"></span></div>
+        <div class="flex-container">
+            <div class="flex-group">
+                <button id="crop-rotate-btn" title="旋转图像 90°" class="secondary">旋转图像</button>
+                <button type="button" class="secondary" onclick="clearCanvas()">清除画布</button>
+                <button id="crop-reset-btn" title="重置图像 (重置缩放/平移)" class="secondary">重置图像</button>
+                <button id="sendimgbutton" type="button" class="primary" onclick="sendimg()">发送图片</button>
+            </div>
+        </div>
+        <div class="canvas-container">
+            <div class="canvas-title"></div>
+            <canvas id="canvas" width="800" height="480"></canvas>
+            <div class="flex-container canvas-tools">
+                <div class="flex-group tool-buttons">
+                    <button id="image-mode" title="图片上传" class="tool-button">🖼️</button>
+                    <button id="brush-mode" title="画笔" class="tool-button">✏️</button>
+                    <button id="eraser-mode" title="橡皮擦" class="tool-button">🧽</button>
+                    <button id="text-mode" title="添加文字" class="tool-button">T</button>
+                    <button id="calendar-mode" title="日历" class="tool-button">📅</button>
+                    <button id="weather-mode" title="天气" class="tool-button">🌤️</button>
+                    <button id="undo-btn" title="撤销 (Ctrl+Z)" class="tool-button hide">↶</button>
+                    <button id="redo-btn" title="重做 (Ctrl+Y)" class="tool-button hide">↷</button>
+                </div>
+            </div>
+
+            <div id="image-panel">
+                <div class="flex-container canvas-tools">
+                    <div class="flex-group">
+                        <input type="file" id="imageFile" accept=".png,.jpg,.bmp,.webp,.jpeg" onchange="updateImage()">
+                    </div>
+                </div>
+                <div class="flex-container canvas-tools">
+                    <div class="flex-group crop-tools">
+                        <button id="crop-zoom-in" title="放大" class="secondary">+</button>
+                        <button id="crop-zoom-out" title="缩小" class="secondary">-</button>
+                        <button id="crop-move-left" title="左移">⇦</button>
+                        <button id="crop-move-up" title="上移">⇧</button>
+                        <button id="crop-move-down" title="下移">⇩</button>
+                        <button id="crop-move-right" title="右移">⇨</button>
+                        <button id="crop-done-btn" title="完成" class="primary">✓</button>
+                        <button id="crop-cancel-btn" title="取消" class="secondary">✗</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-container canvas-tools">
+                <div class="flex-group brush-tools">
+                    <label for="brush-color">颜色:</label>
+                    <select id="brush-color">
+                        <option value="#000000">黑色</option>
+                        <option value="#FF0000">红色</option>
+                        <option value="#FFFF00">黄色</option>
+                        <option value="#00FF00">绿色</option>
+                        <option value="#0000FF">蓝色</option>
+                        <option value="#FFFFFF">白色</option>
+                    </select>
+                    <label for="brush-size">粗细:</label>
+                    <input type="number" id="brush-size" value="2" min="1" max="100">
+                </div>
+            </div>
+
+            <div class="flex-container canvas-tools">
+                <div class="flex-group text-tools">
+                    <label for="font-family">字体:</label>
+                    <select id="font-family">
+                        <option value="Arial">Arial</option>
+                        <option value="SimSun">宋体</option>
+                        <option value="SimHei">黑体</option>
+                        <option value="Microsoft Yahei">微软雅黑</option>
+                        <option value="KaiTi">楷体</option>
+                        <option value="Source Han Sans CN">思源黑体</option>
+                        <option value="Source Han Serif SC">思源宋体</option>
+                    </select>
+                    <label for="font-size">大小:</label>
+                    <input type="number" id="font-size" value="16" min="1" max="100">
+                </div>
+                <div class="flex-group text-tools">
+                    <input type="text" id="text-input" placeholder="输入文字" style="width:150px">
+                    <button id="text-bold" title="粗体">B</button>
+                    <button id="text-italic" title="斜体">I</button>
+                    <button id="add-text-btn" class="primary">添加文字</button>
+                </div>
+            </div>
+
+            <div id="weather-panel" style="display:none">
+                <div class="flex-container canvas-tools">
+                    <div class="flex-group">
+                        <label for="weather-api-host">API Host:</label>
+                        <input type="text" id="weather-api-host" placeholder="如 abc123.qweatherapi.com" style="width:180px">
+                        <label for="weather-api-key">API Key:</label>
+                        <input type="text" id="weather-api-key" placeholder="你的API Key" style="width:140px">
+                        <label for="weather-city">城市:</label>
+                        <input type="text" id="weather-city" value="北京" style="width:70px">
+                        <button id="weather-fetch-btn" class="primary">获取天气</button>
+                    </div>
+                </div>
+                <div class="flex-container canvas-tools">
+                    <div class="flex-group">
+                        <label for="weather-style">样式:</label>
+                        <select id="weather-style">
+                            <option value="full" selected>完整（今日+小时预报+7天预报）</option>
+                            <option value="simple">简洁（今日温度+3天预报）</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset id="contentFieldset">
+        <legend>内容投送 · A/B 双面</legend>
+        <p class="panel-hint">A 面专投「天气」，B 面专投「热搜 / 日历 / 网页」。生成预览后一键投递到 7.3&quot; 七色墨水屏。</p>
+        <div class="flex-container">
+            <div class="flex-group face-tabs">
+                <button id="tabAFace" type="button" class="tab active">🅰️ A 面 · 天气</button>
+                <button id="tabBFace" type="button" class="tab">🅱️ B 面 · 热搜/日历/网页</button>
+            </div>
+        </div>
+
+        <!-- ============ A 面：天气 ============ -->
+        <div id="aFacePanel">
+            <div class="flex-container options">
+                <div class="flex-group">
+                    <label for="aWhost">天气API Host:</label>
+                    <input type="text" id="aWhost" placeholder="如 abc123.qweatherapi.com" style="width:180px">
+                    <label for="aWkey">Key:</label>
+                    <input type="text" id="aWkey" placeholder="和风天气 Key" style="width:140px">
+                </div>
+            </div>
+            <div class="flex-container options">
+                <div class="flex-group">
+                    <label for="aWcity">城市:</label>
+                    <input type="text" id="aWcity" value="北京" style="width:80px">
+                    <label for="aWstyle">样式:</label>
+                    <select id="aWstyle">
+                        <option value="full" selected>完整</option>
+                        <option value="simple">简洁</option>
+                    </select>
+                    <button id="aWfetchBtn" type="button" class="primary">获取天气并预览</button>
+                </div>
+            </div>
+            <div class="preview-wrap">
+                <span class="preview-label">A 面预览（800×480）</span>
+                <canvas id="aPreviewCanvas" width="800" height="480" class="face-preview"></canvas>
+            </div>
+            <div class="flex-container">
+                <div class="flex-group">
+                    <button id="sendAFaceBtn" type="button" class="primary">📤 投递到 A 面</button>
+                </div>
+                <span class="status-note" id="aStatusNote">未生成 A 面内容</span>
+            </div>
+        </div>
+
+        <!-- ============ B 面：热搜 / 日历 / 网页 ============ -->
+        <div id="bFacePanel" style="display:none">
+            <div class="flex-container">
+                <div class="flex-group face-tabs">
+                    <button id="bTabHot" type="button" class="tab sub active">🔥 热搜榜</button>
+                    <button id="bTabCal" type="button" class="tab sub">📅 日历</button>
+                    <button id="bTabWeb" type="button" class="tab sub">🌐 网页投送</button>
+                </div>
+            </div>
+
+            <!-- B-热搜 -->
+            <div id="bHotPanel">
+                <div class="flex-container options">
+                    <div class="flex-group">
+                        <label for="bPlatform">平台:</label>
+                        <select id="bPlatform">
+                            <option value="weibo" selected>微博热搜</option>
+                            <option value="baidu">百度热搜</option>
+                            <option value="douyin">抖音热搜</option>
+                            <option value="zhihu">知乎热榜</option>
+                            <option value="bili">B站热搜</option>
+                        </select>
+                        <button id="bHotFetchBtn" type="button" class="primary">获取热搜并预览</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- B-日历 -->
+            <div id="bCalPanel" style="display:none">
+                <div class="flex-container options">
+                    <div class="flex-group">
+                        <button id="bCalGenBtn" type="button" class="primary">生成本月日历（含农历）</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- B-网页 -->
+            <div id="bWebPanel" style="display:none">
+                <div class="flex-container options">
+                    <div class="flex-group">
+                        <label for="bWebUrl">网页地址:</label>
+                        <input type="text" id="bWebUrl" placeholder="https://..." style="width:240px">
+                        <button id="bWebShotBtn" type="button" class="primary">截图投送</button>
+                    </div>
+                </div>
+                <div class="flex-container options">
+                    <div class="flex-group">
+                        <label for="bWebApi">截图API(可选):</label>
+                        <input type="text" id="bWebApi" placeholder="默认 https://api.vvhan.com/api/screenshot?url=" style="width:280px">
+                        <label for="bWebFile">或本地图片:</label>
+                        <input type="file" id="bWebFile" accept=".png,.jpg,.jpeg,.bmp,.webp">
+                    </div>
+                </div>
+                <p class="panel-hint" style="margin-top:6px">提示：截图服务依赖第三方接口，若返回无 CORS 头会无法取模，此时请改用「本地图片」上传。</p>
+            </div>
+
+            <div class="preview-wrap">
+                <span class="preview-label">B 面预览（800×480）</span>
+                <canvas id="bPreviewCanvas" width="800" height="480" class="face-preview"></canvas>
+            </div>
+            <div class="flex-container">
+                <div class="flex-group">
+                    <button id="sendBFaceBtn" type="button" class="primary">📤 投递到 B 面</button>
+                </div>
+                <span class="status-note" id="bStatusNote">未生成 B 面内容</span>
+            </div>
+        </div>
+
+        <div class="flex-container" style="margin-top:10px">
+            <div class="flex-group">
+                <button id="sendABBothBtn" type="button" class="primary">🔄 AB 异显投递（A天气 + B热搜/日历/网页）</button>
+            </div>
+        </div>
+    </fieldset>
+
+    <div class="footer">
+        <span class="copy">&copy; 2026.</span>
+        <div id="appModeStatusBar"></div>
+    </div>
+</div>
+
+<script type="text/javascript" src="js/qrcode.min.js?v=20260131"></script>
+<script type="text/javascript" src="js/ble_transfer.js?v=20260202"></script>
+<script type="text/javascript" src="js/crop.js?v=20251109"></script>
+<script type="text/javascript" src="js/paint.js?v=20260131_2"></script>
+<script type="text/javascript" src="js/weather.js?v=20260629"></script>
+<script type="text/javascript" src="js/hotsearch.js?v=20260802"></script>
+<script type="text/javascript" src="js/lz77.js?v=20260202"></script>
+<script type="text/javascript" src="js/epd_format.js?v=20251109"></script>
+<script type="text/javascript" src="js/app_protocol.js?v=20260131_2"></script>
+<script type="text/javascript" src="js/main.js?v=20260629"></script>
+<script type="text/javascript">
+document.body.onload = () => {
+    textDecoder = null;
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    paintManager = new PaintManager(canvas, ctx);
+    cropManager = new CropManager(canvas, ctx, paintManager);
+    paintManager.initPaintTools();
+    cropManager.initCropTools();
+
+    initEventHandlers();
+    updateButtonStatus();
+
+    const initEditors = () => {
+        initImageEditor();
+    };
+    if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(initEditors, { timeout: 200 });
+    } else {
+        setTimeout(initEditors, 0);
+    }
+};
+</script>
+</body>
+</html>
