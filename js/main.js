@@ -89,18 +89,9 @@ const EpdCmd = {
     CFG_ERASE: 0x99
 };
 
-// 画布尺寸预设（仅保留7.3寸七色屏）
-const canvasSizes = [
-    { name: '7.3E6_800_480', width: 800, height: 480 }
-];
-
 // ==================== 双协议支持 ====================
-let appMtuNegotiated = false;
 let appModeEnabled = false;
-let currentEpdIndex = 1;
 let compressEnabled = false;
-let epdTypeForApp = 0x06;
-let imageDataA = null, imageDataB = null, currentImageDataForApp = null;
 let storedImageDataA = null;
 let storedImageDataB = null;
 
@@ -175,15 +166,6 @@ async function write(cmd, data, withResponse = true) {
 }
 
 // ==================== APP模式专用函数 ====================
-async function loadImageFromFile(file) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = URL.createObjectURL(file);
-    });
-}
-
 async function sendimgAppMode() {
     const epdIndex = parseInt(document.getElementById('abSelect')?.value || '1');
     const compressEnabled = document.getElementById('compressEnable')?.checked || false;

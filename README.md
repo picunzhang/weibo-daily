@@ -5,7 +5,6 @@
 支持 **A / B 双面** 独立或异显投送。
 
 > 本项目根目录 `index.html` 仅适配 7.3 寸七色屏（`800×480`），不兼容其它尺寸/驱动。
-> 旧版 4.2 寸方案保留在 `v1.5/`（独立 demo，非本项目的目标设备）。
 
 ---
 
@@ -87,8 +86,7 @@ npx serve .
 │   ├── app_protocol.js   # APP 协议
 │   ├── epd_format.js     # 七色取模
 │   ├── crop.js / lz77.js / qrcode.min.js ...
-├── favicon.png
-└── v1.5/                # 旧版 4.2 寸方案（独立 demo，非目标设备）
+└── favicon.png
 ```
 
 ---
