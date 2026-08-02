@@ -1,12 +1,17 @@
 /**
- * 每日热搜模块
+ * 每日热搜模块（纯在线）
  * 支持多个免费公开热搜榜单（微博/百度/抖音/知乎/B站），
- * 解析多种返回格式；联网失败时回退到内置示例数据，保证离线可用。
+ * 解析多种返回格式。所有数据均来自在线接口，不内置任何示例/假数据。
+ *
+ * 取数策略（保证「真·在线」）：
+ *   1) 直连免费聚合 API（vvhan，通常允许跨域）；
+ *   2) 若直连因 CORS / 网络失败，自动经 CORS 代理再取一次（仍是真实在线数据）；
+ *   3) 若全部失败，明确标记「获取失败」，绝不显示假榜单。
  *
  * 用法：
  *   const hs = new HotSearchManager(ctx, canvas);
- *   await hs.fetch('weibo');   // 拉取数据
- *   hs.draw();                 // 渲染到 ctx (800x480)
+ *   const data = await hs.fetch('weibo');   // 拉取数据（在线）
+ *   hs.draw();                               // 渲染到 ctx (800x480)
  */
 
 function HotSearchManager(ctx, canvas) {
@@ -14,11 +19,12 @@ function HotSearchManager(ctx, canvas) {
     this.canvas = canvas;
     this.data = null;          // [{title, hot, url}]
     this.platform = 'weibo';
-    this.lastSource = '';      // 'api' | 'offline'
+    this.lastSource = '';      // 'api' | ''（失败）
     this.error = null;
+    this.sourceUrl = '';       // 实际取数地址（用于调试）
 }
 
-// 平台定义：免费聚合 API（vvhan，通常允许跨域）
+// 平台定义：免费聚合 API（vvhan）
 HotSearchManager.prototype.PLATFORMS = {
     weibo:  { name: '微博热搜', api: 'https://api.vvhan.com/api/hotlist/wbHot' },
     baidu:  { name: '百度热搜', api: 'https://api.vvhan.com/api/hotlist/baiduRD' },
@@ -27,20 +33,11 @@ HotSearchManager.prototype.PLATFORMS = {
     bili:   { name: 'B站热搜',  api: 'https://api.vvhan.com/api/hotlist/bili' }
 };
 
-// 内置示例数据（离线兜底，避免空白屏）
-HotSearchManager.prototype.SAMPLE = [
-    { title: '示例：七色墨水屏正式投产，功耗再创新低', hot: '9999999' },
-    { title: '示例：冷空气来袭，多地开启降温模式', hot: '8888888' },
-    { title: '示例：人工智能助手走进千家万户', hot: '7777777' },
-    { title: '示例：新能源汽车销量连续三月增长', hot: '6666666' },
-    { title: '示例：城市夜经济焕发新活力', hot: '5555555' },
-    { title: '示例：国产科幻电影票房破纪录', hot: '4444444' },
-    { title: '示例：航天新任务圆满成功', hot: '3333333' },
-    { title: '示例：全民健身热潮持续升温', hot: '2222222' },
-    { title: '示例：智慧农业助力乡村振兴', hot: '1111111' },
-    { title: '示例：开源社区迎来爆发式增长', hot: '1000000' },
-    { title: '示例：极地科考取得重大突破', hot: '900000' },
-    { title: '示例：绿色能源占比持续提升', hot: '800000' }
+// CORS 代理（直连被跨域拦截时，经这些代理再取一次真实数据；仍是线上实时数据）
+HotSearchManager.prototype.PROXIES = [
+    (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+    (u) => 'https://thingproxy.freeboard.io/fetch/' + u
 ];
 
 // 七色墨水屏调色板（与 main.js 一致）
@@ -59,35 +56,48 @@ HotSearchManager.prototype.getPlatformName = function(p) {
 };
 
 /**
- * 拉取热搜数据
+ * 在线拉取热搜数据
  * @param {string} platform 平台 key
  * @param {string} [apiOverride] 自定义 API 地址（覆盖默认）
+ * @returns {Array|null} 成功返回条目数组；全部来源失败返回 null
  */
 HotSearchManager.prototype.fetch = async function(platform, apiOverride) {
     this.platform = platform || this.platform;
     this.error = null;
-    const def = this.PLATFORMS[this.platform] || this.PLATFORMS.weibo;
-    const api = apiOverride || def.api;
+    this.data = null;
+    this.lastSource = '';
+    this.sourceUrl = '';
 
-    try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 8000);
-        const resp = await fetch(api, { signal: ctrl.signal, cache: 'no-store' });
-        clearTimeout(timer);
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const json = await resp.json();
-        const items = this._normalize(json);
-        if (!items || items.length === 0) throw new Error('返回数据为空');
-        this.data = items.slice(0, 20);
-        this.lastSource = 'api';
-        return this.data;
-    } catch (e) {
-        this.error = e.message || String(e);
-        console.warn('[HotSearch] 在线获取失败，使用离线示例：', this.error);
-        this.data = this.SAMPLE.slice(0, 20);
-        this.lastSource = 'offline';
-        return this.data;
+    const def = this.PLATFORMS[this.platform] || this.PLATFORMS.weibo;
+    const direct = apiOverride || def.api;
+
+    // 构造候选地址：直连优先，其次各 CORS 代理
+    const candidates = [direct].concat(this.PROXIES.map(p => p(direct)));
+
+    for (let i = 0; i < candidates.length; i++) {
+        const api = candidates[i];
+        try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 9000);
+            const resp = await fetch(api, { signal: ctrl.signal, cache: 'no-store' });
+            clearTimeout(timer);
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const json = await resp.json();
+            const items = this._normalize(json);
+            if (!items || items.length === 0) throw new Error('返回数据为空');
+            this.data = items.slice(0, 20);
+            this.lastSource = 'api';
+            this.sourceUrl = api;
+            return this.data;
+        } catch (e) {
+            this.error = e.message || String(e);
+            console.warn('[HotSearch] 来源失败（' + (i === 0 ? '直连' : '代理' + i) + '）：', this.error);
+            // 继续尝试下一个候选来源
+        }
     }
+    // 所有在线来源均失败
+    this.lastSource = '';
+    return null;
 };
 
 // 兼容多种返回结构
@@ -121,7 +131,7 @@ HotSearchManager.prototype._fmtHot = function(hot) {
     return String(n);
 };
 
-// 文本截断（按像素宽度）
+// 文本截断（按像素宽度，左对齐测量，与 textAlign 无关）
 HotSearchManager.prototype._truncate = function(text, maxWidth) {
     const ctx = this.ctx;
     if (ctx.measureText(text).width <= maxWidth) return text;
@@ -134,9 +144,9 @@ HotSearchManager.prototype._truncate = function(text, maxWidth) {
 
 /**
  * 渲染热搜榜到当前 canvas
+ * 无数据（在线获取失败）时渲染明确的失败提示，绝不绘制假榜单。
  */
 HotSearchManager.prototype.draw = function() {
-    if (!this.data) this.data = this.SAMPLE.slice(0, 20);
     const ctx = this.ctx;
     const W = this.canvas.width;
     const H = this.canvas.height;
@@ -145,6 +155,25 @@ HotSearchManager.prototype.draw = function() {
     ctx.fillStyle = C.WHITE;
     ctx.fillRect(0, 0, W, H);
     ctx.textBaseline = 'middle';
+
+    // ---------- 失败态 ----------
+    if (!this.data || this.data.length === 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = C.RED;
+        ctx.font = "bold 30px 'SimHei', sans-serif";
+        ctx.fillText('热搜获取失败', W / 2, H / 2 - 24);
+        ctx.fillStyle = C.BLACK;
+        ctx.font = "15px 'SimHei', sans-serif";
+        const msg = '请检查网络 / 接口（' + (this.error || '未知错误') + '）';
+        ctx.fillText(this._truncate(msg, W - 80), W / 2, H / 2 + 14);
+        ctx.fillStyle = C.BLUE;
+        ctx.font = "13px 'SimHei', sans-serif";
+        ctx.fillText('本模块仅显示在线实时数据', W / 2, H / 2 + 44);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        return;
+    }
+
     ctx.textAlign = 'left';
 
     const now = new Date();
@@ -153,14 +182,12 @@ HotSearchManager.prototype.draw = function() {
     const weekStr = weekNames[now.getDay()];
 
     // ---------- 顶部标题区 ----------
-    // 左上角装饰
     ctx.fillStyle = C.BLACK;
     ctx.fillRect(0, 0, 8, 36);
     ctx.fillRect(0, 0, 36, 8);
     ctx.fillStyle = C.RED;
     ctx.fillRect(8, 8, 10, 4);
     ctx.fillRect(8, 8, 4, 10);
-    // 右上角装饰
     ctx.fillStyle = C.BLUE;
     ctx.fillRect(W - 8, 0, 8, 36);
     ctx.fillStyle = C.BLACK;
@@ -168,27 +195,24 @@ HotSearchManager.prototype.draw = function() {
     ctx.fillStyle = C.YELLOW;
     ctx.fillRect(W - 20, 8, 12, 4);
 
-    // 平台名
     const pName = this.getPlatformName(this.platform);
     ctx.font = "bold 30px 'SimHei', sans-serif";
     ctx.fillStyle = C.BLACK;
     ctx.fillText(pName, 20, 26);
 
-    // 日期 + 星期（右侧）
     ctx.font = "14px 'SimHei', sans-serif";
     ctx.fillStyle = C.BLUE;
     const ds = `${dateStr} ${weekStr}`;
     const dsw = ctx.measureText(ds).width;
     ctx.fillText(ds, W - 20 - dsw, 28);
 
-    // 来源标识
+    // 来源标识（始终「实时在线」）
     ctx.font = "11px 'SimHei', sans-serif";
-    ctx.fillStyle = this.lastSource === 'offline' ? C.ORANGE : C.GREEN;
+    ctx.fillStyle = C.GREEN;
     ctx.textAlign = 'right';
-    ctx.fillText(this.lastSource === 'offline' ? '离线示例' : '实时', W - 20, 46);
+    ctx.fillText('实时在线', W - 20, 46);
     ctx.textAlign = 'left';
 
-    // 分隔线
     ctx.fillStyle = C.BLACK;
     ctx.fillRect(20, 54, W - 40, 3);
 
@@ -196,8 +220,8 @@ HotSearchManager.prototype.draw = function() {
     const listTop = 66;
     const rowH = 22;
     const leftX = 22;
-    const rankW = 34;            // 排名区宽度
-    const hotW = 86;             // 热度区宽度
+    const rankW = 34;
+    const hotW = 86;
     const titleX = leftX + rankW;
     const titleMaxW = W - titleX - hotW - 16;
 
@@ -206,7 +230,6 @@ HotSearchManager.prototype.draw = function() {
         const item = items[i];
         const y = listTop + i * rowH + rowH / 2;
 
-        // 排名数字
         ctx.font = "bold 18px 'SimHei', sans-serif";
         let rankColor = C.BLACK;
         if (i === 0) rankColor = C.RED;
@@ -216,13 +239,11 @@ HotSearchManager.prototype.draw = function() {
         const rankStr = String(i + 1).padStart(2, '0');
         ctx.fillText(rankStr, leftX, y);
 
-        // 标题（截断）
         ctx.font = "16px 'SimHei', sans-serif";
         ctx.fillStyle = C.BLACK;
         const t = this._truncate(item.title, titleMaxW);
         ctx.fillText(t, titleX, y);
 
-        // 热度（右对齐）
         if (item.hot) {
             ctx.font = "12px 'SimHei', sans-serif";
             ctx.fillStyle = C.BLUE;
@@ -232,7 +253,6 @@ HotSearchManager.prototype.draw = function() {
         }
     }
 
-    // 底部标识
     ctx.font = "10px 'SimHei', sans-serif";
     ctx.fillStyle = C.BLACK;
     ctx.textAlign = 'left';

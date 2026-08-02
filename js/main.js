@@ -795,14 +795,21 @@ async function genAFaceWeather() {
 
 async function genBFaceHot() {
     const platform = document.getElementById('bPlatform').value;
-    addLog('🔄 正在获取「' + bHot.getPlatformName(platform) + '」热搜...');
-    await bHot.fetch(platform);
+    addLog('🔄 正在在线获取「' + bHot.getPlatformName(platform) + '」热搜...');
+    const data = await bHot.fetch(platform);
     bCtx.fillStyle = '#FFFFFF'; bCtx.fillRect(0, 0, 800, 480);
     bHot.draw();
+    if (!data || data.length === 0) {
+        bGenerated = false;
+        const msg = '❌ 热搜在线获取失败：' + (bHot.error || '无数据');
+        document.getElementById('bStatusNote').textContent = msg;
+        addLog(msg + '（本模块只显示在线实时数据，请检查网络/接口）');
+        refreshFacePreview('B');
+        return;
+    }
     bGenerated = true;
-    const src = bHot.lastSource === 'offline' ? '（离线示例）' : '（实时）';
-    document.getElementById('bStatusNote').textContent = 'B 面已生成：热搜 ' + src;
-    addLog('✅ B 面热搜已生成 ' + src);
+    document.getElementById('bStatusNote').textContent = 'B 面已生成：热搜（实时在线）';
+    addLog('✅ B 面热搜已在线获取');
     refreshFacePreview('B');
 }
 
